@@ -1,23 +1,19 @@
 import pygame
 import sys
 import random
-
 # Initialisation de Pygame
 pygame.init()
-
 # Constantes
 TAILLE_CASE = 80
 LARGEUR = HAUTEUR = 8 * TAILLE_CASE
 FENETRE = pygame.display.set_mode((LARGEUR, HAUTEUR))
 pygame.display.set_caption("Jeu d'Échecs")
-
 # Couleurs
 BLANC = (255, 255, 255)
 NOIR = (0, 0, 0)
 GRIS = (128, 128, 128)
 BLEU = (0, 0, 255)
 ROUGE = (255, 0, 0)
-
 # Chargement des images des pièces
 PIECES = {}
 for couleur in ['b', 'n']:
@@ -26,20 +22,16 @@ for couleur in ['b', 'n']:
             pygame.image.load(f"pieces/{couleur}{piece}.png"),
             (TAILLE_CASE, TAILLE_CASE)
         )
-
 class Piece:
     def __init__(self, couleur, symbole):
         self.couleur = couleur
         self.symbole = symbole
         self.a_bouge = False
-
     def mouvements_valides(self, x, y, echiquier):
         return []
-
 class Roi(Piece):
     def __init__(self, couleur):
         super().__init__(couleur, 'R')
-
     def mouvements_valides(self, x, y, echiquier, verifier_echec=True):
         mouvements = []
         for dx in [-1, 0, 1]:
@@ -67,12 +59,11 @@ class Roi(Piece):
                 all(echiquier.plateau[x][i] is None for i in range(1, 4))):
                 if all(not echiquier.case_est_attaquee(x, i, self.couleur) for i in range(2, 5)):
                     mouvements.append((x, 2))
+        
         return mouvements
-
 class Dame(Piece):
     def __init__(self, couleur):
         super().__init__(couleur, 'D')
-
     def mouvements_valides(self, x, y, echiquier):
         mouvements = []
         directions = [(0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]
@@ -88,11 +79,9 @@ class Dame(Piece):
                     break
                 nx, ny = nx + dx, ny + dy
         return mouvements
-
 class Tour(Piece):
     def __init__(self, couleur):
         super().__init__(couleur, 'T')
-
     def mouvements_valides(self, x, y, echiquier):
         mouvements = []
         directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
@@ -108,11 +97,9 @@ class Tour(Piece):
                     break
                 nx, ny = nx + dx, ny + dy
         return mouvements
-
 class Fou(Piece):
     def __init__(self, couleur):
         super().__init__(couleur, 'F')
-
     def mouvements_valides(self, x, y, echiquier):
         mouvements = []
         directions = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
@@ -128,11 +115,9 @@ class Fou(Piece):
                     break
                 nx, ny = nx + dx, ny + dy
         return mouvements
-
 class Cavalier(Piece):
     def __init__(self, couleur):
         super().__init__(couleur, 'C')
-
     def mouvements_valides(self, x, y, echiquier):
         mouvements = []
         directions = [(2, 1), (1, 2), (-1, 2), (-2, 1), (-2, -1), (-1, -2), (1, -2), (2, -1)]
@@ -142,12 +127,10 @@ class Cavalier(Piece):
                 if echiquier.plateau[nx][ny] is None or echiquier.plateau[nx][ny].couleur != self.couleur:
                     mouvements.append((nx, ny))
         return mouvements
-
 class Pion(Piece):
     def __init__(self, couleur):
         super().__init__(couleur, 'P')
         self.en_passant = False
-
     def mouvements_valides(self, x, y, echiquier):
         mouvements = []
         direction = -1 if self.couleur == 'blanc' else 1
@@ -169,13 +152,11 @@ class Pion(Piece):
                     if isinstance(piece_adjacente, Pion) and piece_adjacente.en_passant:
                         mouvements.append((nx, ny))
         return mouvements
-
 class Echiquier:
     def __init__(self):
         self.plateau = [[None for _ in range(8)] for _ in range(8)]
         self.initialiser()
         self.dernier_mouvement = None
-
     def initialiser(self):
         ordre = [Tour, Cavalier, Fou, Dame, Roi, Fou, Cavalier, Tour]
         for i in range(8):
@@ -183,8 +164,7 @@ class Echiquier:
             self.plateau[1][i] = Pion('noir')
             self.plateau[6][i] = Pion('blanc')
             self.plateau[7][i] = ordre[i]('blanc')
-
-    def dessiner(self, fenetre, piece_selectionnee=None, mouvements_possibles=None):
+    def dessiner(self, fenetre):
         for i in range(8):
             for j in range(8):
                 couleur = BLANC if (i + j) % 2 == 0 else GRIS
@@ -192,42 +172,12 @@ class Echiquier:
                 piece = self.plateau[i][j]
                 if piece:
                     fenetre.blit(PIECES[f"{'b' if piece.couleur == 'blanc' else 'n'}{piece.symbole}"], 
-                                (j * TAILLE_CASE, i * TAILLE_CASE))
-
-        # Si une pièce est sélectionnée, dessiner les mouvements possibles
-        if piece_selectionnee and mouvements_possibles:
-            for (nx, ny) in mouvements_possibles:
-                if self.plateau[nx][ny] is None:
-                    pygame.draw.circle(fenetre, BLEU, (ny * TAILLE_CASE + TAILLE_CASE // 2, 
-                                                    nx * TAILLE_CASE + TAILLE_CASE // 2), 15)
-                else:
-                    pygame.draw.rect(fenetre, ROUGE, (ny * TAILLE_CASE, nx * TAILLE_CASE, TAILLE_CASE, TAILLE_CASE), 5)
-
-    def cloue(self, mouvements, piece, x, y):
-        """Filtre les mouvements qui cloueraient la pièce."""
-        mouvements_valides = []
-        for arrivee in mouvements:
-            echiquier_temp = self.copier()
-            if echiquier_temp.deplacer2((x, y), arrivee):
-                if not echiquier_temp.est_en_echec(piece.couleur):
-                    mouvements_valides.append(arrivee)  # Seules les positions de destination
-        return mouvements_valides
-
-
+                                 (j * TAILLE_CASE, i * TAILLE_CASE))
     def deplacer(self, depart, arrivee):
         x1, y1 = depart
         x2, y2 = arrivee
         piece = self.plateau[x1][y1]
-        
-        if piece is None:
-            return False  # Pas de pièce à déplacer
-
-        # Obtenir les mouvements valides
-        mouvements = piece.mouvements_valides(x1, y1, self)
-        mouvements_valides = self.cloue(mouvements, piece, x1, y1)  # Filtrer les mouvements cloués
-        
-        # Vérifier si le mouvement (x2, y2) est bien dans les mouvements validés
-        if (x2, y2) in mouvements_valides:
+        if piece and (x2, y2) in piece.mouvements_valides(x1, y1, self):
             # Gestion du roque
             if isinstance(piece, Roi) and abs(y2 - y1) == 2:
                 # Petit roque
@@ -243,15 +193,26 @@ class Echiquier:
                     self.plateau[x1][3] = self.plateau[x1][0]  # Déplacer la tour
                     self.plateau[x1][0] = None
                 piece.a_bouge = True
+                self.plateau[x1][3].a_bouge = True  # Marquer la tour comme ayant bougé
                 return True
-            
+            # Mise à jour de l'état "en passant" pour les pions
+            if isinstance(piece, Pion) and abs(x2 - x1) == 2:
+                piece.en_passant = True
+            else:
+                for row in self.plateau:
+                    for p in row:
+                        if isinstance(p, Pion):
+                            p.en_passant = False
+            if isinstance(piece, Pion) and y1 != y2 and self.plateau[x2][y2] == None:
+                # Cela signifie qu'il s'agit d'une prise en passant
+                self.plateau[x1][y2] = None  # Supprime le pion capturé
             # Déplacement normal
             self.plateau[x2][y2] = piece
             self.plateau[x1][y1] = None
             piece.a_bouge = True
-
             # Gestion de la promotion du pion
             if isinstance(piece, Pion) and (x2 == 0 or x2 == 7):
+                # Utilise la nouvelle méthode pour demander le choix de la promotion
                 choix = self.demander_choix_promotion(piece.couleur)
                 if choix == "Dame":
                     self.plateau[x2][y2] = Dame(piece.couleur)
@@ -261,105 +222,23 @@ class Echiquier:
                     self.plateau[x2][y2] = Fou(piece.couleur)
                 elif choix == "Cavalier":
                     self.plateau[x2][y2] = Cavalier(piece.couleur)
-
-            # Mise à jour de l'état "en passant"
-            if isinstance(piece, Pion):
-                # Marque le pion pour une capture en passant possible
-                if abs(x2 - x1) == 2:
-                    piece.en_passant = True
-                else:
-                    piece.en_passant = False  # Pions qui ne peuvent plus être capturés
-                # Gestion de la prise en passant
-                if y1 != y2 and self.plateau[x1][y2] is None:  # Prise en passant
-                    self.plateau[x1][y2] = None  # Supprimer le pion capturé
-
-            self.dernier_mouvement = (depart, arrivee)  # Met à jour le dernier mouvement
+            self.dernier_mouvement = (depart, arrivee)
             return True
-        
-        return False  # Mouvement non valide
-    
-    def deplacer2(self, depart, arrivee):
-        x1, y1 = depart
-        x2, y2 = arrivee
-        piece = self.plateau[x1][y1]
-        
-        if piece is None:
-            return False  # Pas de pièce à déplacer
-
-        # Obtenir les mouvements valides
-        mouvements = piece.mouvements_valides(x1, y1, self)
-        mouvements_valides = mouvements
-
-        if (x2, y2) in mouvements_valides:
-            # Gestion du roque
-            if isinstance(piece, Roi) and abs(y2 - y1) == 2:
-                # Petit roque
-                if y2 > y1:
-                    self.plateau[x1][6] = piece  # Déplacer le roi
-                    self.plateau[x1][y1] = None
-                    self.plateau[x1][5] = self.plateau[x1][7]  # Déplacer la tour
-                    self.plateau[x1][7] = None
-                # Grand roque
-                else:
-                    self.plateau[x1][2] = piece  # Déplacer le roi
-                    self.plateau[x1][y1] = None
-                    self.plateau[x1][3] = self.plateau[x1][0]  # Déplacer la tour
-                    self.plateau[x1][0] = None
-                piece.a_bouge = True
-                return True
-            
-            # Déplacement normal
-            self.plateau[x2][y2] = piece
-            self.plateau[x1][y1] = None
-            piece.a_bouge = True
-
-            # Gestion de la promotion du pion
-            if isinstance(piece, Pion) and (x2 == 0 or x2 == 7):
-                choix = self.demander_choix_promotion(piece.couleur)
-                if choix == "Dame":
-                    self.plateau[x2][y2] = Dame(piece.couleur)
-                elif choix == "Tour":
-                    self.plateau[x2][y2] = Tour(piece.couleur)
-                elif choix == "Fou":
-                    self.plateau[x2][y2] = Fou(piece.couleur)
-                elif choix == "Cavalier":
-                    self.plateau[x2][y2] = Cavalier(piece.couleur)
-
-            # Mise à jour de l'état "en passant"
-            if isinstance(piece, Pion):
-                # Marque le pion pour une capture en passant possible
-                if abs(x2 - x1) == 2:
-                    piece.en_passant = True
-                else:
-                    piece.en_passant = False  # Pions qui ne peuvent plus être capturés
-                # Gestion de la prise en passant
-                if y1 != y2 and self.plateau[x1][y2] is None:  # Prise en passant
-                    self.plateau[x1][y2] = None  # Supprimer le pion capturé
-
-            self.dernier_mouvement = (depart, arrivee)  # Met à jour le dernier mouvement
-            return True
-        
-        return False  # Mouvement non valide
-
-
+        return False
     def demander_choix_promotion(self, couleur):
         # Créez un fond pour le menu de promotion
         fenetre_promotion = pygame.Surface((TAILLE_CASE * 4, TAILLE_CASE))
         fenetre_promotion.fill(GRIS)
-
         # Chargez les images des pièces pour la promotion
         choix_pieces = ['D', 'T', 'F', 'C']  # Dame, Tour, Fou, Cavalier
         positions = []
-
         for i, piece in enumerate(choix_pieces):
             image = PIECES[f"{'b' if couleur == 'blanc' else 'n'}{piece}"]
             fenetre_promotion.blit(image, (i * TAILLE_CASE, 0))
             positions.append(pygame.Rect(i * TAILLE_CASE, 0, TAILLE_CASE, TAILLE_CASE))
-
         # Affiche le menu au centre de l'écran
         FENETRE.blit(fenetre_promotion, (LARGEUR // 2 - TAILLE_CASE * 2, HAUTEUR // 2 - TAILLE_CASE // 2))
         pygame.display.flip()
-
         # Attendre que l'utilisateur clique sur une pièce pour la promotion
         while True:
             for event in pygame.event.get():
@@ -374,7 +253,6 @@ class Echiquier:
                         if rect.collidepoint(mouse_pos[0] - LARGEUR // 2 + TAILLE_CASE * 2, mouse_pos[1] - HAUTEUR // 2 + TAILLE_CASE // 2):
                             # Retourne le choix de la promotion basé sur l'icône cliquée
                             return ['Dame', 'Tour', 'Fou', 'Cavalier'][i]
-
     def obtenir_tous_mouvements(self, couleur):
         mouvements = []
         for x in range(8):
@@ -384,7 +262,6 @@ class Echiquier:
                     for nx, ny in piece.mouvements_valides(x, y, self):
                         mouvements.append(((x, y), (nx, ny)))
         return mouvements
-
     def est_en_echec(self, couleur):
         roi_pos = None
         for i in range(8):
@@ -397,7 +274,6 @@ class Echiquier:
                 break
         
         return self.case_est_attaquee(*roi_pos, couleur)
-
     def case_est_attaquee(self, x, y, couleur_defendeur):
         for i in range(8):
             for j in range(8):
@@ -410,7 +286,6 @@ class Echiquier:
                     if (x, y) in mouvements:
                         return True
         return False
-
     def est_echec_et_mat(self, couleur):
         if not self.est_en_echec(couleur):
             return False
@@ -421,16 +296,13 @@ class Echiquier:
                 if not echiquier_temp.est_en_echec(couleur):
                     return False
         return True
-
     def copier(self):
         nouveau = Echiquier()
         nouveau.plateau = [[self.plateau[i][j] for j in range(8)] for i in range(8)]
         return nouveau
-
 class IA:
     def __init__(self, couleur):
         self.couleur = couleur
-
     def choisir_mouvement(self, echiquier):
         mouvements = echiquier.obtenir_tous_mouvements(self.couleur)
         mouvements_valides = []
@@ -440,7 +312,6 @@ class IA:
                 if not echiquier_temp.est_en_echec(self.couleur):
                     mouvements_valides.append((depart, arrivee))
         return random.choice(mouvements_valides) if mouvements_valides else None
-
 def afficher_menu(fenetre):
     """Affiche le menu de sélection pour choisir le mode de jeu via un clic"""
     font = pygame.font.Font(None, 74)
@@ -457,7 +328,6 @@ def afficher_menu(fenetre):
     fenetre.blit(text2, text2_rect)
     
     pygame.display.flip()
-
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -471,21 +341,15 @@ def afficher_menu(fenetre):
                     return 'IA'
                 elif text2_rect.collidepoint(mouse_pos):  # Si le clic est sur "Joueur vs Joueur"
                     return 'Joueur'
-
-
-
 def main():
     echiquier = Echiquier()
-
     # Afficher le menu et sélectionner le mode de jeu
     mode_de_jeu = afficher_menu(FENETRE)
-
     ia = IA('noir') if mode_de_jeu == 'IA' else None
     tour = 'blanc'
     piece_selectionnee = None
     mouvements_valides = []
     partie_terminee = False
-
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -507,8 +371,6 @@ def main():
                     if piece and piece.couleur == tour:
                         piece_selectionnee = (x, y)
                         mouvements_valides = piece.mouvements_valides(x, y, echiquier)
-                        mouvements_valides = echiquier.cloue(mouvements_valides, piece, x, y)
-
                         # Vérifier si le roi est en échec
                         if echiquier.est_en_echec(tour):
                             # Créer une copie de l'échiquier
@@ -517,7 +379,6 @@ def main():
                                 m for m in mouvements_valides
                                 if echiquier_temp.deplacer((x, y), m) and not echiquier_temp.est_en_echec(tour)
                             ]
-
                             # Si aucun mouvement valide n'est trouvé, réinitialiser
                             if not mouvements_valides:
                                 piece_selectionnee = None  # Réinitialiser si aucun mouvement valide
@@ -528,48 +389,39 @@ def main():
             if mouvement:
                 echiquier.deplacer(*mouvement)
                 tour = 'blanc'
-
         FENETRE.fill(NOIR)
         echiquier.dessiner(FENETRE)
-        if piece_selectionnee and mouvements_valides:
+        if piece_selectionnee:
             pygame.draw.rect(FENETRE, BLEU, 
                             (piece_selectionnee[1] * TAILLE_CASE, piece_selectionnee[0] * TAILLE_CASE, 
                             TAILLE_CASE, TAILLE_CASE), 3)
             for x, y in mouvements_valides:
                 pygame.draw.circle(FENETRE, BLEU, 
                                 (y * TAILLE_CASE + TAILLE_CASE // 2, x * TAILLE_CASE + TAILLE_CASE // 2), 10)
-
         # Vérifier si le roi blanc est en échec
         if echiquier.est_en_echec('blanc'):
             roi_pos = next((i, j) for i, row in enumerate(echiquier.plateau) for j, piece in enumerate(row) 
                         if isinstance(piece, Roi) and piece.couleur == 'blanc')
             pygame.draw.rect(FENETRE, ROUGE, 
                             (roi_pos[1] * TAILLE_CASE, roi_pos[0] * TAILLE_CASE, TAILLE_CASE, TAILLE_CASE), 3)
-
         # Vérifier si c'est échec et mat
         if echiquier.est_echec_et_mat('blanc'):
             partie_terminee = True
             font = pygame.font.Font(None, 74)
             text = font.render('Échec et mat !', True, ROUGE)
             FENETRE.blit(text, (LARGEUR // 2 - text.get_width() // 2, HAUTEUR // 2 - text.get_height() // 2))
-
         # Vérifier si le roi noir est en échec
         if echiquier.est_en_echec('noir'):
             roi_pos = next((i, j) for i, row in enumerate(echiquier.plateau) for j, piece in enumerate(row) 
                         if isinstance(piece, Roi) and piece.couleur == 'noir')
             pygame.draw.rect(FENETRE, ROUGE, 
                             (roi_pos[1] * TAILLE_CASE, roi_pos[0] * TAILLE_CASE, TAILLE_CASE, TAILLE_CASE), 3)
-
         # Vérifier si c'est échec et mat
         if echiquier.est_echec_et_mat('noir'):
             partie_terminee = True
             font = pygame.font.Font(None, 74)
             text = font.render('Échec et mat !', True, ROUGE)
             FENETRE.blit(text, (LARGEUR // 2 - text.get_width() // 2, HAUTEUR // 2 - text.get_height() // 2))
-
         pygame.display.flip()
-
-
-
 if __name__ == "__main__":
     main()
