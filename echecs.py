@@ -244,7 +244,7 @@ class Echiquier:
                     for p in row:
                         if isinstance(p, Pion):
                             p.en_passant = False
-            if isinstance(piece, Pion) and y1 != y2 and self.plateau[x2][y2] is None:
+            if isinstance(piece, Pion) and y1 != y2:
                 # Cela signifie qu'il s'agit d'une prise en passant
                 self.plateau[x1][y2] = None  # Supprime le pion capturé
 
