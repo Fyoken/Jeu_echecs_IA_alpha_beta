@@ -160,6 +160,24 @@ class Echiquier:
         self.initialiser()
         self.dernier_mouvement = None
         self.stalemate = False
+        self.historique_positions = []
+    def obtenir_etat(self):
+        """Retourne une représentation de l'état actuel de l'échiquier."""
+        etat = ""
+        for ligne in self.plateau:
+            for piece in ligne:
+                if piece is None:
+                    etat += "."
+                else:
+                    etat += piece.symbole + ("b" if piece.couleur == "blanc" else "n")
+        return etat
+    def verifier_egalite_par_repetition(self):
+        """Vérifie s'il y a égalité par répétition (3 fois la même position)."""
+        if len(self.historique_positions) >= 9:  # Il faut au moins 9 coups pour avoir 3 répétitions
+            etat_actuel = self.historique_positions[-1]
+            if self.historique_positions.count(etat_actuel) >= 3:
+                return True
+        return False
     def initialiser(self):
         ordre = [Tour, Cavalier, Fou, Dame, Roi, Fou, Cavalier, Tour]
         for i in range(8):
@@ -234,6 +252,7 @@ class Echiquier:
                 elif choix == "Cavalier":
                     self.plateau[x2][y2] = Cavalier(piece.couleur)
             self.dernier_mouvement = (depart, arrivee)
+            self.historique_positions.append(self.obtenir_etat())
             return True
         return False
     def deplacerIA(self, depart, arrivee, joueur=False):
@@ -282,6 +301,7 @@ class Echiquier:
                 elif choix == "Cavalier":
                     self.plateau[x2][y2] = Cavalier(piece.couleur)
             self.dernier_mouvement = (depart, arrivee)
+            self.historique_positions.append(self.obtenir_etat())
             return True
         return False
     def demander_choix_promotion(self, couleur):
@@ -543,7 +563,12 @@ def main():
         if echiquier.stalemate:
             partie_terminee = True
             font = pygame.font.Font(None, 74)
-            text = font.render('Stalemate !', True, ROUGE)
+            text = font.render('Égalité : Stalemate !', True, ROUGE)
+            FENETRE.blit(text, (LARGEUR // 2 - text.get_width() // 2, HAUTEUR // 2 - text.get_height() // 2))
+        if echiquier.verifier_egalite_par_repetition():
+            partie_terminee = True
+            font = pygame.font.Font(None, 74)
+            text = font.render('Égalité : 3 répétitions !', True, ROUGE)
             FENETRE.blit(text, (LARGEUR // 2 - text.get_width() // 2, HAUTEUR // 2 - text.get_height() // 2))
         pygame.display.flip()
 if __name__ == "__main__":
