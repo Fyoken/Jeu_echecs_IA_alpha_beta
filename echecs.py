@@ -4,7 +4,7 @@ import sys
 # Initialisation de Pygame
 pygame.init()
 # Constantes
-TAILLE_CASE = 80
+TAILLE_CASE = 120
 LARGEUR = HAUTEUR = 8 * TAILLE_CASE
 FENETRE = pygame.display.set_mode((LARGEUR, HAUTEUR))
 PROFONDEUR = 2
@@ -457,7 +457,7 @@ class IA:
 
 def afficher_menu(fenetre):
     """Affiche le menu de sélection pour choisir le mode de jeu via un clic"""
-    font = pygame.font.Font(None, 74)
+    font = pygame.font.Font(None, 111)
     text1 = font.render("1. Joueur vs IA", True, BLANC)
     text2 = font.render("2. Joueur vs Joueur", True, BLANC)
     
@@ -503,6 +503,25 @@ def main():
                 if piece_selectionnee:
                     if (x, y) in mouvements_valides:
                         if echiquier.deplacer(piece_selectionnee, (x, y), mouvements_valides, True):
+                            echiquier.stalemate = True
+                            for x in range(8):  # Parcourir toutes les lignes de l'échiquier (taille standard 8x8)
+                                for y in range(8):  # Parcourir toutes les colonnes
+                                    piece = echiquier.plateau[x][y]  # Récupérer la pièce à la position (x, y)
+                            
+                                    # Vérifier si la case contient une pièce et si elle appartient au joueur dont c'est le tour
+                                    if piece and piece.couleur != tour:
+                                        piece_selectionnee = (x, y)        
+                                        # Récupérer les mouvements valides de la pièce
+                                        mouvements = piece.mouvements_valides(x, y, echiquier)
+                                        
+                                        # Vérifier si ces mouvements ne sont pas bloqués par une situation d'échec
+                                        mouvements_valides = echiquier.cloue(mouvements, piece, x, y)
+                                        # Si au moins un mouvement valide existe, il n'y a pas de pat
+                                        if mouvements_valides != []:
+                                            echiquier.stalemate = False
+                                            break  # Pas besoin de continuer si on trouve un mouvement valide
+                                if not echiquier.stalemate:  # Sortir de la boucle principale si un mouvement valide est trouvé
+                                    break
                             echiquier.dessiner(FENETRE)
                             pygame.display.update()
                             piece_selectionnee = None
@@ -518,8 +537,6 @@ def main():
                         piece_selectionnee = (x, y)
                         mouvements = piece.mouvements_valides(x, y, echiquier)
                         mouvements_valides = echiquier.cloue(mouvements, piece, x, y)
-                        if mouvements_valides == []:
-                            echiquier.stalemate = True
         # Si c'est le tour de l'IA et que le mode de jeu est "Joueur vs IA"
         if tour == 'noir' and mode_de_jeu == 'IA' and not partie_terminee:
             mouvement = ia.choisir_mouvement(echiquier)
@@ -535,7 +552,7 @@ def main():
                             TAILLE_CASE, TAILLE_CASE), 3)
             for x, y in mouvements_valides:
                 pygame.draw.circle(FENETRE, BLEU, 
-                                (y * TAILLE_CASE + TAILLE_CASE // 2, x * TAILLE_CASE + TAILLE_CASE // 2), 10)
+                                (y * TAILLE_CASE + TAILLE_CASE // 2, x * TAILLE_CASE + TAILLE_CASE // 2), 15)
         # Vérifier si le roi blanc est en échec
         if echiquier.est_en_echec('blanc'):
             roi_pos = next((i, j) for i, row in enumerate(echiquier.plateau) for j, piece in enumerate(row) 
@@ -545,7 +562,7 @@ def main():
         # Vérifier si c'est échec et mat
         if echiquier.est_echec_et_mat('blanc'):
             partie_terminee = True
-            font = pygame.font.Font(None, 74)
+            font = pygame.font.Font(None, 111)
             text = font.render('Échec et mat !', True, ROUGE)
             FENETRE.blit(text, (LARGEUR // 2 - text.get_width() // 2, HAUTEUR // 2 - text.get_height() // 2))
         # Vérifier si le roi noir est en échec
@@ -557,17 +574,17 @@ def main():
         # Vérifier si c'est échec et mat
         if echiquier.est_echec_et_mat('noir'):
             partie_terminee = True
-            font = pygame.font.Font(None, 74)
+            font = pygame.font.Font(None, 111)
             text = font.render('Échec et mat !', True, ROUGE)
             FENETRE.blit(text, (LARGEUR // 2 - text.get_width() // 2, HAUTEUR // 2 - text.get_height() // 2))
-        if echiquier.stalemate:
+        if echiquier.stalemate and not echiquier.est_echec_et_mat("noir") and not echiquier.est_echec_et_mat("blanc"):
             partie_terminee = True
-            font = pygame.font.Font(None, 74)
+            font = pygame.font.Font(None, 111)
             text = font.render('Égalité : Stalemate !', True, ROUGE)
             FENETRE.blit(text, (LARGEUR // 2 - text.get_width() // 2, HAUTEUR // 2 - text.get_height() // 2))
         if echiquier.verifier_egalite_par_repetition():
             partie_terminee = True
-            font = pygame.font.Font(None, 74)
+            font = pygame.font.Font(None, 111)
             text = font.render('Égalité : 3 répétitions !', True, ROUGE)
             FENETRE.blit(text, (LARGEUR // 2 - text.get_width() // 2, HAUTEUR // 2 - text.get_height() // 2))
         pygame.display.flip()
