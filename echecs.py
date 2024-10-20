@@ -157,6 +157,7 @@ class Echiquier:
         self.plateau = [[None for _ in range(8)] for _ in range(8)]
         self.initialiser()
         self.dernier_mouvement = None
+        self.stalemate = False
     def initialiser(self):
         ordre = [Tour, Cavalier, Fou, Dame, Roi, Fou, Cavalier, Tour]
         for i in range(8):
@@ -181,8 +182,6 @@ class Echiquier:
             if echiquier_temp.deplacer((x, y), arrivee, mouvements):
                 if not echiquier_temp.est_en_echec(piece.couleur):
                     mouvements_valides.append(arrivee)  # Seules les positions de destination
-            else:
-                print("peut pas bouger")
         return mouvements_valides
     def deplacer(self, depart, arrivee, mouvements_valides, joueur=False):
         x1, y1 = depart
@@ -427,10 +426,9 @@ def main():
                     if piece and piece.couleur == tour:
                         piece_selectionnee = (x, y)
                         mouvements = piece.mouvements_valides(x, y, echiquier)
-                        print("Avant clouage ")
-                        print(mouvements)
                         mouvements_valides = echiquier.cloue(mouvements, piece, x, y)
-                        print(mouvements_valides)
+                        if mouvements_valides == []:
+                            echiquier.stalemate = True
         # Si c'est le tour de l'IA et que le mode de jeu est "Joueur vs IA"
         if tour == 'noir' and mode_de_jeu == 'IA' and not partie_terminee:
             mouvement = ia.choisir_mouvement(echiquier)
@@ -470,6 +468,11 @@ def main():
             partie_terminee = True
             font = pygame.font.Font(None, 74)
             text = font.render('Échec et mat !', True, ROUGE)
+            FENETRE.blit(text, (LARGEUR // 2 - text.get_width() // 2, HAUTEUR // 2 - text.get_height() // 2))
+        if echiquier.stalemate:
+            partie_terminee = True
+            font = pygame.font.Font(None, 74)
+            text = font.render('Stalemate !', True, ROUGE)
             FENETRE.blit(text, (LARGEUR // 2 - text.get_width() // 2, HAUTEUR // 2 - text.get_height() // 2))
         pygame.display.flip()
 if __name__ == "__main__":
