@@ -8,7 +8,7 @@ pygame.init()
 TAILLE_CASE = 120
 LARGEUR = HAUTEUR = 8 * TAILLE_CASE
 FENETRE = pygame.display.set_mode((LARGEUR, HAUTEUR))
-PROFONDEUR = 2
+PROFONDEUR = 1
 pygame.display.set_caption("Jeu d'Échecs")
 # Couleurs
 BLANC = (255, 255, 255)
@@ -524,6 +524,9 @@ def main():
                                         # Si au moins un mouvement valide existe, il n'y a pas de pat
                                         if mouvements_temp != []:
                                             echiquier.stalemate = False
+                                            break
+                                if not echiquier.stalemate:
+                                    break
                     else:
                         piece_selectionnee = None
                         mouvements_valides = []
