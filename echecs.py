@@ -170,6 +170,9 @@ class Echiquier:
         for i in range(8):
             for j in range(8):
                 couleur = BLANC if (i + j) % 2 == 0 else GRIS
+                # Si c'est la case d'arrivée du dernier mouvement, la mettre en bleu
+                if self.dernier_mouvement and (i, j) == self.dernier_mouvement[0]:
+                    couleur = BLEU
                 pygame.draw.rect(fenetre, couleur, (j * TAILLE_CASE, i * TAILLE_CASE, TAILLE_CASE, TAILLE_CASE))
                 piece = self.plateau[i][j]
                 if piece:
@@ -230,9 +233,6 @@ class Echiquier:
                 elif choix == "Cavalier":
                     self.plateau[x2][y2] = Cavalier(piece.couleur)
             self.dernier_mouvement = (depart, arrivee)
-            self.dernier_mouvement
-
-
             return True
         return False
     def deplacerIA(self, depart, arrivee, joueur=False):
@@ -280,6 +280,7 @@ class Echiquier:
                     self.plateau[x2][y2] = Fou(piece.couleur)
                 elif choix == "Cavalier":
                     self.plateau[x2][y2] = Cavalier(piece.couleur)
+            self.dernier_mouvement = (depart, arrivee)
             return True
         return False
     def demander_choix_promotion(self, couleur):
