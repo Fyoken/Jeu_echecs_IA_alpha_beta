@@ -1,12 +1,13 @@
 import pygame
 import sys
-import random
+
 # Initialisation de Pygame
 pygame.init()
 # Constantes
 TAILLE_CASE = 80
 LARGEUR = HAUTEUR = 8 * TAILLE_CASE
 FENETRE = pygame.display.set_mode((LARGEUR, HAUTEUR))
+PROFONDEUR = 2
 pygame.display.set_caption("Jeu d'Échecs")
 # Couleurs
 BLANC = (255, 255, 255)
@@ -229,9 +230,12 @@ class Echiquier:
                 elif choix == "Cavalier":
                     self.plateau[x2][y2] = Cavalier(piece.couleur)
             self.dernier_mouvement = (depart, arrivee)
+            self.dernier_mouvement
+
+
             return True
         return False
-    def deplacerIA(self, depart, arrivee):
+    def deplacerIA(self, depart, arrivee, joueur=False):
         x1, y1 = depart
         x2, y2 = arrivee
         piece = self.plateau[x1][y1]
@@ -267,7 +271,7 @@ class Echiquier:
             # Gestion de la promotion du pion
             if isinstance(piece, Pion) and (x2 == 0 or x2 == 7):
                 # Utilise la nouvelle méthode pour demander le choix de la promotion
-                choix = self.demander_choix_promotion(piece.couleur)
+                choix = self.demander_choix_promotion(piece.couleur) if joueur else "Dame"
                 if choix == "Dame":
                     self.plateau[x2][y2] = Dame(piece.couleur)
                 elif choix == "Tour":
@@ -276,7 +280,6 @@ class Echiquier:
                     self.plateau[x2][y2] = Fou(piece.couleur)
                 elif choix == "Cavalier":
                     self.plateau[x2][y2] = Cavalier(piece.couleur)
-            self.dernier_mouvement = (depart, arrivee)
             return True
         return False
     def demander_choix_promotion(self, couleur):
@@ -314,7 +317,10 @@ class Echiquier:
                 piece = self.plateau[x][y]
                 if piece and piece.couleur == couleur:
                     for nx, ny in piece.mouvements_valides(x, y, self):
-                        mouvements.append(((x, y), (nx, ny)))
+                        echiquier_temp = self.copier()
+                        if echiquier_temp.deplacer((x, y), (nx, ny), piece.mouvements_valides(x, y, self)):
+                            if not echiquier_temp.est_en_echec(piece.couleur):
+                                mouvements.append(((x, y), (nx, ny)))
         return mouvements
     def est_en_echec(self, couleur):
         roi_pos = None
@@ -357,15 +363,76 @@ class Echiquier:
 class IA:
     def __init__(self, couleur):
         self.couleur = couleur
+
+    def evaluation(self, echiquier):
+        valeurs_pieces = {
+            'P': 1,   # Pion
+            'C': 3,   # Cavalier
+            'F': 3,   # Fou
+            'T': 5,   # Tour
+            'D': 9,   # Dame
+            'R': 0    # Roi (sa valeur n'est pas pertinente pour une évaluation simple)
+        }
+        score = 0
+        for x in range(8):
+            for y in range(8):
+                piece = echiquier.plateau[x][y]
+                if piece:
+                    valeur = valeurs_pieces[piece.symbole]
+                    if piece.couleur == self.couleur:
+                        score += valeur
+                    else:
+                        score -= valeur
+        return score
+
+    def alpha_beta(self, echiquier, profondeur, alpha, beta, maximiser):
+        if profondeur == 0 or echiquier.est_echec_et_mat(self.couleur):
+            return self.evaluation(echiquier)
+
+        mouvements = echiquier.obtenir_tous_mouvements(self.couleur if maximiser else ('blanc' if self.couleur == 'noir' else 'noir'))
+
+        if maximiser:
+            max_eval = float('-inf')
+            for depart, arrivee in mouvements:
+                echiquier_temp = echiquier.copier()
+                echiquier_temp.deplacerIA(depart, arrivee)
+                eval = self.alpha_beta(echiquier_temp, profondeur - 1, alpha, beta, False)
+                max_eval = max(max_eval, eval)
+                alpha = max(alpha, eval)
+                if beta <= alpha:
+                    break  # Coupure Beta
+            return max_eval
+        else:
+            min_eval = float('inf')
+            for depart, arrivee in mouvements:
+                echiquier_temp = echiquier.copier()
+                echiquier_temp.deplacerIA(depart, arrivee)
+                eval = self.alpha_beta(echiquier_temp, profondeur - 1, alpha, beta, True)
+                min_eval = min(min_eval, eval)
+                beta = min(beta, eval)
+                if beta <= alpha:
+                    break  # Coupure Alpha
+            return min_eval
+
     def choisir_mouvement(self, echiquier):
+        meilleur_mouvement = None
+        meilleur_score = float('-inf')
+        alpha = float('-inf')
+        beta = float('inf')
+
+        # Récupérer tous les mouvements possibles
         mouvements = echiquier.obtenir_tous_mouvements(self.couleur)
-        mouvements_valides = []
+        # Parcourir chaque mouvement pour déterminer le meilleur en utilisant l'alpha-beta
         for depart, arrivee in mouvements:
             echiquier_temp = echiquier.copier()
-            if echiquier_temp.deplacerIA(depart, arrivee):
-                if not echiquier_temp.est_en_echec(self.couleur):
-                    mouvements_valides.append((depart, arrivee))
-        return random.choice(mouvements_valides) if mouvements_valides else None
+            echiquier_temp.deplacerIA(depart, arrivee)
+            score = self.alpha_beta(echiquier_temp, profondeur=PROFONDEUR, alpha=alpha, beta=beta, maximiser=False)  # La profondeur peut être ajustée
+            if score > meilleur_score:
+                meilleur_score = score
+                meilleur_mouvement = (depart, arrivee)
+
+        return meilleur_mouvement
+
 def afficher_menu(fenetre):
     """Affiche le menu de sélection pour choisir le mode de jeu via un clic"""
     font = pygame.font.Font(None, 74)
@@ -435,7 +502,7 @@ def main():
             if mouvement:
                 echiquier.deplacerIA(*mouvement)
                 piece.a_bouge = True
-                tour = 'blanc'
+                tour = "blanc"
         FENETRE.fill(NOIR)
         echiquier.dessiner(FENETRE)
         if piece_selectionnee:
