@@ -14,6 +14,7 @@ BLANC = (255, 255, 255)
 NOIR = (0, 0, 0)
 GRIS = (128, 128, 128)
 BLEU = (0, 0, 255)
+CYAN = (43,255,255,0.5)
 ROUGE = (255, 0, 0)
 # Chargement des images des pièces
 PIECES = {}
@@ -172,7 +173,7 @@ class Echiquier:
                 couleur = BLANC if (i + j) % 2 == 0 else GRIS
                 # Si c'est la case d'arrivée du dernier mouvement, la mettre en bleu
                 if self.dernier_mouvement and (i, j) == self.dernier_mouvement[0]:
-                    couleur = BLEU
+                    couleur = CYAN
                 pygame.draw.rect(fenetre, couleur, (j * TAILLE_CASE, i * TAILLE_CASE, TAILLE_CASE, TAILLE_CASE))
                 piece = self.plateau[i][j]
                 if piece:
@@ -482,6 +483,8 @@ def main():
                 if piece_selectionnee:
                     if (x, y) in mouvements_valides:
                         if echiquier.deplacer(piece_selectionnee, (x, y), mouvements_valides, True):
+                            echiquier.dessiner(FENETRE)
+                            pygame.display.update()
                             piece_selectionnee = None
                             piece.a_bouge = True
                             mouvements_valides = []
