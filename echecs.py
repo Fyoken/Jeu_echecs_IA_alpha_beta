@@ -173,7 +173,66 @@ class Echiquier:
                 if piece:
                     fenetre.blit(PIECES[f"{'b' if piece.couleur == 'blanc' else 'n'}{piece.symbole}"], 
                                  (j * TAILLE_CASE, i * TAILLE_CASE))
-    def deplacer(self, depart, arrivee):
+    def cloue(self, mouvements, piece, x, y):
+        """Filtre les mouvements qui cloueraient la pièce."""
+        mouvements_valides = []
+        for arrivee in mouvements:
+            echiquier_temp = self.copier()
+            if echiquier_temp.deplacer((x, y), arrivee, mouvements):
+                if not echiquier_temp.est_en_echec(piece.couleur):
+                    mouvements_valides.append(arrivee)  # Seules les positions de destination
+            else:
+                print("peut pas bouger")
+        return mouvements_valides
+    def deplacer(self, depart, arrivee, mouvements_valides, joueur=False):
+        x1, y1 = depart
+        x2, y2 = arrivee
+        piece = self.plateau[x1][y1]
+        if piece and (x2, y2) in mouvements_valides:
+            # Gestion du roque
+            if isinstance(piece, Roi) and abs(y2 - y1) == 2:
+                # Petit roque
+                if y2 > y1:
+                    self.plateau[x1][6] = piece  # Déplacer le roi
+                    self.plateau[x1][y1] = None
+                    self.plateau[x1][5] = self.plateau[x1][7]  # Déplacer la tour
+                    self.plateau[x1][7] = None
+                # Grand roque
+                else:
+                    self.plateau[x1][2] = piece  # Déplacer le roi
+                    self.plateau[x1][y1] = None
+                    self.plateau[x1][3] = self.plateau[x1][0]  # Déplacer la tour
+                    self.plateau[x1][0] = None
+                return True
+            # Mise à jour de l'état "en passant" pour les pions
+            if isinstance(piece, Pion) and abs(x2 - x1) == 2:
+                piece.en_passant = True
+            else:
+                for row in self.plateau:
+                    for p in row:
+                        if isinstance(p, Pion):
+                            p.en_passant = False
+            if isinstance(piece, Pion) and y1 != y2 and self.plateau[x2][y2] == None:
+                # Cela signifie qu'il s'agit d'une prise en passant
+                self.plateau[x1][y2] = None  # Supprime le pion capturé
+            self.plateau[x2][y2] = piece
+            self.plateau[x1][y1] = None
+            # Gestion de la promotion du pion
+            if isinstance(piece, Pion) and (x2 == 0 or x2 == 7):
+                # Utilise la nouvelle méthode pour demander le choix de la promotion
+                choix = self.demander_choix_promotion(piece.couleur) if joueur else "Dame"
+                if choix == "Dame":
+                    self.plateau[x2][y2] = Dame(piece.couleur)
+                elif choix == "Tour":
+                    self.plateau[x2][y2] = Tour(piece.couleur)
+                elif choix == "Fou":
+                    self.plateau[x2][y2] = Fou(piece.couleur)
+                elif choix == "Cavalier":
+                    self.plateau[x2][y2] = Cavalier(piece.couleur)
+            self.dernier_mouvement = (depart, arrivee)
+            return True
+        return False
+    def deplacerIA(self, depart, arrivee):
         x1, y1 = depart
         x2, y2 = arrivee
         piece = self.plateau[x1][y1]
@@ -192,8 +251,6 @@ class Echiquier:
                     self.plateau[x1][y1] = None
                     self.plateau[x1][3] = self.plateau[x1][0]  # Déplacer la tour
                     self.plateau[x1][0] = None
-                piece.a_bouge = True
-                self.plateau[x1][3].a_bouge = True  # Marquer la tour comme ayant bougé
                 return True
             # Mise à jour de l'état "en passant" pour les pions
             if isinstance(piece, Pion) and abs(x2 - x1) == 2:
@@ -206,10 +263,8 @@ class Echiquier:
             if isinstance(piece, Pion) and y1 != y2 and self.plateau[x2][y2] == None:
                 # Cela signifie qu'il s'agit d'une prise en passant
                 self.plateau[x1][y2] = None  # Supprime le pion capturé
-            # Déplacement normal
             self.plateau[x2][y2] = piece
             self.plateau[x1][y1] = None
-            piece.a_bouge = True
             # Gestion de la promotion du pion
             if isinstance(piece, Pion) and (x2 == 0 or x2 == 7):
                 # Utilise la nouvelle méthode pour demander le choix de la promotion
@@ -292,7 +347,7 @@ class Echiquier:
         
         for depart, arrivee in self.obtenir_tous_mouvements(couleur):
             echiquier_temp = self.copier()
-            if echiquier_temp.deplacer(depart, arrivee):
+            if echiquier_temp.deplacerIA(depart, arrivee):
                 if not echiquier_temp.est_en_echec(couleur):
                     return False
         return True
@@ -308,7 +363,7 @@ class IA:
         mouvements_valides = []
         for depart, arrivee in mouvements:
             echiquier_temp = echiquier.copier()
-            if echiquier_temp.deplacer(depart, arrivee):
+            if echiquier_temp.deplacerIA(depart, arrivee):
                 if not echiquier_temp.est_en_echec(self.couleur):
                     mouvements_valides.append((depart, arrivee))
         return random.choice(mouvements_valides) if mouvements_valides else None
@@ -359,8 +414,9 @@ def main():
                 x, y = event.pos[1] // TAILLE_CASE, event.pos[0] // TAILLE_CASE
                 if piece_selectionnee:
                     if (x, y) in mouvements_valides:
-                        if echiquier.deplacer(piece_selectionnee, (x, y)):
+                        if echiquier.deplacer(piece_selectionnee, (x, y), mouvements_valides, True):
                             piece_selectionnee = None
+                            piece.a_bouge = True
                             mouvements_valides = []
                             tour = 'noir' if tour == 'blanc' else 'blanc'
                     else:
@@ -370,24 +426,17 @@ def main():
                     piece = echiquier.plateau[x][y]
                     if piece and piece.couleur == tour:
                         piece_selectionnee = (x, y)
-                        mouvements_valides = piece.mouvements_valides(x, y, echiquier)
-                        # Vérifier si le roi est en échec
-                        if echiquier.est_en_echec(tour):
-                            # Créer une copie de l'échiquier
-                            echiquier_temp = echiquier.copier()
-                            mouvements_valides = [
-                                m for m in mouvements_valides
-                                if echiquier_temp.deplacer((x, y), m) and not echiquier_temp.est_en_echec(tour)
-                            ]
-                            # Si aucun mouvement valide n'est trouvé, réinitialiser
-                            if not mouvements_valides:
-                                piece_selectionnee = None  # Réinitialiser si aucun mouvement valide
-                                continue  # Passer à l'itération suivante
+                        mouvements = piece.mouvements_valides(x, y, echiquier)
+                        print("Avant clouage ")
+                        print(mouvements)
+                        mouvements_valides = echiquier.cloue(mouvements, piece, x, y)
+                        print(mouvements_valides)
         # Si c'est le tour de l'IA et que le mode de jeu est "Joueur vs IA"
         if tour == 'noir' and mode_de_jeu == 'IA' and not partie_terminee:
             mouvement = ia.choisir_mouvement(echiquier)
             if mouvement:
-                echiquier.deplacer(*mouvement)
+                echiquier.deplacerIA(*mouvement)
+                piece.a_bouge = True
                 tour = 'blanc'
         FENETRE.fill(NOIR)
         echiquier.dessiner(FENETRE)
