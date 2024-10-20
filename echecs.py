@@ -1,5 +1,6 @@
 import pygame
 import sys
+import copy
 
 # Initialisation de Pygame
 pygame.init()
@@ -379,9 +380,8 @@ class Echiquier:
                     return False
         return True
     def copier(self):
-        nouveau = Echiquier()
-        nouveau.plateau = [[self.plateau[i][j] for j in range(8)] for i in range(8)]
-        return nouveau
+        """Effectue une copie profonde de l'échiquier."""
+        return copy.deepcopy(self)
 class IA:
     def __init__(self, couleur):
         self.couleur = couleur
@@ -503,31 +503,27 @@ def main():
                 if piece_selectionnee:
                     if (x, y) in mouvements_valides:
                         if echiquier.deplacer(piece_selectionnee, (x, y), mouvements_valides, True):
-                            echiquier.stalemate = True
-                            for x in range(8):  # Parcourir toutes les lignes de l'échiquier (taille standard 8x8)
-                                for y in range(8):  # Parcourir toutes les colonnes
-                                    piece = echiquier.plateau[x][y]  # Récupérer la pièce à la position (x, y)
-                            
-                                    # Vérifier si la case contient une pièce et si elle appartient au joueur dont c'est le tour
-                                    if piece and piece.couleur != tour:
-                                        piece_selectionnee = (x, y)        
-                                        # Récupérer les mouvements valides de la pièce
-                                        mouvements = piece.mouvements_valides(x, y, echiquier)
-                                        
-                                        # Vérifier si ces mouvements ne sont pas bloqués par une situation d'échec
-                                        mouvements_valides = echiquier.cloue(mouvements, piece, x, y)
-                                        # Si au moins un mouvement valide existe, il n'y a pas de pat
-                                        if mouvements_valides != []:
-                                            echiquier.stalemate = False
-                                            break  # Pas besoin de continuer si on trouve un mouvement valide
-                                if not echiquier.stalemate:  # Sortir de la boucle principale si un mouvement valide est trouvé
-                                    break
-                            echiquier.dessiner(FENETRE)
-                            pygame.display.update()
-                            piece_selectionnee = None
                             piece.a_bouge = True
+                            piece_selectionnee = None
                             mouvements_valides = []
                             tour = 'noir' if tour == 'blanc' else 'blanc'
+                            echiquier_temp = echiquier.copier()
+                            echiquier.stalemate = True
+                            echiquier.dessiner(FENETRE)
+                            pygame.display.update()
+                            for x3 in range(8):  # Parcourir toutes les lignes de l'échiquier (taille standard 8x8)
+                                for y3 in range(8):  # Parcourir toutes les colonnes
+                                    piece_temp = echiquier_temp.plateau[x3][y3]  # Récupérer la pièce à la position (x, y)
+                            
+                                    # Vérifier si la case contient une pièce et si elle appartient au joueur dont c'est le tour
+                                    if piece_temp and piece_temp.couleur == tour:       
+                                        # Récupérer les mouvements valides de la pièce
+                                        mouvements_temp = piece_temp.mouvements_valides(x3, y3, echiquier_temp)
+                                        # Vérifier si ces mouvements ne sont pas bloqués par une situation d'échec
+                                        mouvements_temp = echiquier_temp.cloue(mouvements_temp, piece_temp, x3, y3)
+                                        # Si au moins un mouvement valide existe, il n'y a pas de pat
+                                        if mouvements_temp != []:
+                                            echiquier.stalemate = False
                     else:
                         piece_selectionnee = None
                         mouvements_valides = []
